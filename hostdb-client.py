@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
+import glob
 import os
 import platform
+import re
 import socket
 
 # a function to read one-line sysfs file and return its value
@@ -15,6 +17,13 @@ def read_sysfs_value(sysfs_filename):
         pass
 
     return sysfs_value
+
+class Platform:
+    def __init__(self):
+        self.hostname = socket.getfqdn()
+        self.machine = platform.machine()
+        self.release = platform.release()
+        self.version = platform.version()
 
 class BIOS:
     def __init__(self):
@@ -41,10 +50,29 @@ class Product:
         self.product_serial = read_sysfs_value('/sys/devices/virtual/dmi/id/product_serial')
         self.product_sku = read_sysfs_value('/sys/devices/virtual/dmi/id/product_sku')
 
-class Platform:
+class HardDrive:
     def __init__(self):
-        self.hostname = socket.getfqdn()
-        self.machine = platform.machine()
-        self.release = platform.release()
-        self.version = platform.version()
+        self.devices_list = []
+
+    def get_devices(self):
+        for dev_dirname in glob.glob('/sys/block/*'):
+            dev = os.path.basename(dev_dirname)
+
+            if not re.match(r'^dm|^loop|^zram|^sr', dev):
+                self.devices_list.append(dev)
+
+        return self.devices_list
+
+    def get_device_info(self, dev_name):
+        dev_properties = {}
+
+        if os.path.exists('/sys/block/%s' %(dev_name)):
+            dev_properties['device_name'] = dev_name
+            dev_properties['device_model'] = read_sysfs_value('/sys/block/%s/device/model' %(dev_name))
+            dev_properties['device_firmware_version'] = read_sysfs_value('/sys/block/%s/device/firmware_rev' %(dev_name))
+            dev_properties['device_size'] = read_sysfs_value('/sys/block/%s/size' %(dev_name))
+        else:
+            pass
+
+        return dev_properties
 
