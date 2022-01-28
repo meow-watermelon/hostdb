@@ -121,7 +121,7 @@ class CPU:
         # vendor id, model name, cpu id
         cpu_properties_draft = [[], [], []]
 
-        with open('./cpuinfo', 'rt') as f:
+        with open('/proc/cpuinfo', 'rt') as f:
             for line in f.readlines():
                 # process vendor id
                 vendor_id_match = re.match(r'^vendor_id\s+:\s+(.*)', line.strip())
