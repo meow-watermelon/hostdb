@@ -7,6 +7,7 @@ import os
 import platform
 import re
 import socket
+import subprocess
 
 # a function to read one-line sysfs file and return its value
 def read_sysfs_value(sysfs_filename):
@@ -158,4 +159,44 @@ class CPU:
                 cpu_properties_list.append(cpu_string)
 
             return collections.Counter(cpu_properties_list)
+
+class Memory:
+    def __init__(self):
+        # total size unit: kB
+        self.total_size = 0
+
+    def get_memory_total_size(self):
+        try:
+            with open('/proc/meminfo', 'rt') as f:
+                while True:
+                    memory_match = re.match('^MemTotal:\s+(\d+)\s+kB', f.readline().strip())
+
+                    if memory_match and memory_match.groups():
+                        self.total_size = memory_match.groups()[0]
+                        break
+        except:
+            pass
+        else:
+            return self.total_size
+
+    def get_memory_info(self):
+        try:
+            dmidecode_run = subprocess.run(['dmidecode', '-t', 'memory'], capture_output=True)
+        except:
+            return None
+        else:
+            if dmidecode_run.returncode == 0:
+                memory_size = []
+
+                dmidecode_memory_output = dmidecode_run.stdout.decode().split('\n')
+
+                for entry in dmidecode_memory_output:
+                    size_match = re.match('^\s+Size:\s+(\d+\s+\w+)', entry)
+
+                    if size_match and size_match.groups():
+                        memory_size.append(size_match.groups()[0])
+
+                return collections.Counter(memory_size)
+            else:
+                return None
 
