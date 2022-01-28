@@ -121,37 +121,41 @@ class CPU:
         # vendor id, model name, cpu id
         cpu_properties_draft = [[], [], []]
 
-        with open('/proc/cpuinfo', 'rt') as f:
-            for line in f.readlines():
-                # process vendor id
-                vendor_id_match = re.match(r'^vendor_id\s+:\s+(.*)', line.strip())
+        try:
+            with open('/proc/cpuinfo', 'rt') as f:
+                for line in f.readlines():
+                    # process vendor id
+                    vendor_id_match = re.match(r'^vendor_id\s+:\s+(.*)', line.strip())
 
-                if vendor_id_match and vendor_id_match.groups():
-                    cpu_properties_draft[0].append(vendor_id_match.groups()[0])
+                    if vendor_id_match and vendor_id_match.groups():
+                        cpu_properties_draft[0].append(vendor_id_match.groups()[0])
 
-                # process model name
-                model_name_match = re.match(r'^model name\s+:\s+(.*)', line.strip())
+                    # process model name
+                    model_name_match = re.match(r'^model name\s+:\s+(.*)', line.strip())
 
-                if model_name_match and model_name_match.groups():
-                    cpu_properties_draft[1].append(model_name_match.groups()[0])
+                    if model_name_match and model_name_match.groups():
+                        cpu_properties_draft[1].append(model_name_match.groups()[0])
 
-                # process cpu id
-                cpu_id_match = re.match(r'^physical id\s+:\s+(\d+)', line.strip())
+                    # process cpu id
+                    cpu_id_match = re.match(r'^physical id\s+:\s+(\d+)', line.strip())
 
-                if cpu_id_match and cpu_id_match.groups():
-                    cpu_properties_draft[2].append(cpu_id_match.groups()[0])
+                    if cpu_id_match and cpu_id_match.groups():
+                        cpu_properties_draft[2].append(cpu_id_match.groups()[0])
+        except:
+            return None
+        else:
+            # set up attributes
+            self.cpu_id_list = set(cpu_properties_draft[2])
+            self.num_cpus = len(self.cpu_id_list)
 
-        # set up attributes
-        self.cpu_id_list = set(cpu_properties_draft[2])
-        self.num_cpus = len(self.cpu_id_list)
+            # generate cpu(s) list
+            for cpu_id in self.cpu_id_list:
+                cpu_id_index = cpu_properties_draft[2].index(cpu_id)
+                cpu_vendor_id = cpu_properties_draft[0][cpu_id_index]
+                cpu_model_name = cpu_properties_draft[1][cpu_id_index]
 
-        # generate cpu(s) list
-        for cpu_id in self.cpu_id_list:
-            cpu_id_index = cpu_properties_draft[2].index(cpu_id)
-            cpu_vendor_id = cpu_properties_draft[0][cpu_id_index]
-            cpu_model_name = cpu_properties_draft[1][cpu_id_index]
+                cpu_string = cpu_vendor_id + ' ' + cpu_model_name
+                cpu_properties_list.append(cpu_string)
 
-            cpu_string = cpu_vendor_id + ' ' + cpu_model_name
-            cpu_properties_list.append(cpu_string)
+            return collections.Counter(cpu_properties_list)
 
-        return collections.Counter(cpu_properties_list)
