@@ -270,7 +270,7 @@ class HostDBClient:
         else:
             pass
 
-        # set up memory attributes
+        # set up Memory attributes
         memory = Memory()
         self.payload['memory'] = {}
 
