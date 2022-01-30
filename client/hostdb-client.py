@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 
+import argparse
 import collections
 import glob
 import hwdata
+import json
+import logging
 import os
 import platform
 import re
+import requests
 import socket
 import subprocess
+import sys
 
 # a function to read one-line sysfs file and return its value
 def read_sysfs_value(sysfs_filename):
@@ -25,8 +30,8 @@ class Platform:
     def __init__(self):
         self.hostname = socket.getfqdn()
         self.machine = platform.machine()
-        self.release = platform.release()
-        self.version = platform.version()
+        self.os_release = platform.release()
+        self.os_version = platform.version()
 
 class BIOS:
     def __init__(self):
@@ -73,7 +78,9 @@ class HardDrive:
             dev_properties['device_name'] = dev_name
             dev_properties['device_model'] = read_sysfs_value('/sys/block/%s/device/model' %(dev_name))
             dev_properties['device_firmware_version'] = read_sysfs_value('/sys/block/%s/device/firmware_rev' %(dev_name))
-            dev_properties['device_size'] = read_sysfs_value('/sys/block/%s/size' %(dev_name))
+            # size unit: 512-byte per logical sector
+            # actual size in byte unit: 512 * size
+            dev_properties['device_size'] = int(read_sysfs_value('/sys/block/%s/size' %(dev_name)))
         else:
             pass
 
@@ -172,10 +179,10 @@ class Memory:
                     memory_match = re.match('^MemTotal:\s+(\d+)\s+kB', f.readline().strip())
 
                     if memory_match and memory_match.groups():
-                        self.total_size = memory_match.groups()[0]
+                        self.total_size = int(memory_match.groups()[0])
                         break
         except:
-            pass
+            return None
         else:
             return self.total_size
 
@@ -200,3 +207,101 @@ class Memory:
             else:
                 return None
 
+class HostDBClient:
+    def __init__(self):
+        self.payload = {}
+
+    def set_payload(self):
+        # set up Platform attributes
+        platform = Platform()
+        self.payload['platform'] = platform.__dict__
+
+        # set up BIOS attributes
+        bios = BIOS()
+        self.payload['bios'] = bios.__dict__
+
+        # set up Board attributes
+        board = Board()
+        self.payload['board'] = board.__dict__
+
+        # set up Chassis attributes
+        chassis = Chassis()
+        self.payload['chassis'] = chassis.__dict__
+
+        # set up Product attributes
+        product = Product()
+        self.payload['product'] = product.__dict__
+
+        # set up HardDrive attributes
+        harddrive = HardDrive()
+        self.payload['harddrive'] = {}
+        # get hard drive devices list
+        harddrive.get_devices()
+
+        if harddrive.devices_list:
+            for hd in harddrive.devices_list:
+                self.payload['harddrive'][hd] = harddrive.get_device_info(hd)
+                # convert device size into byte unit
+                self.payload['harddrive'][hd]['device_size'] *= 512
+        else:
+            pass
+
+        # set up NetworkDevice attributes
+        networkdevice = NetworkDevice()
+        self.payload['networkdevice'] = {}
+        # get network interfaces list
+        networkdevice.get_interfaces()
+
+        if networkdevice.interfaces_list:
+            for interface in networkdevice.interfaces_list:
+                self.payload['networkdevice'][interface] = networkdevice.get_interface_info(interface)
+        else:
+            pass
+
+        # set up CPU attributes
+        cpu = CPU()
+        self.payload['cpu'] = {}
+
+        cpu_info = cpu.get_cpu_info()
+
+        if cpu_info:
+            self.payload['cpu']['number_cpus'] = cpu.num_cpus
+            self.payload['cpu']['cpu_info'] = dict(cpu_info)
+        else:
+            pass
+
+        # set up memory attributes
+        memory = Memory()
+        self.payload['memory'] = {}
+
+        if memory.get_memory_total_size():
+            self.payload['memory']['total_size'] = memory.total_size
+        else:
+            self.payload['memory']['total_size'] = None
+
+        memory_info = memory.get_memory_info()
+
+        if memory_info:
+            self.payload['memory']['memory_info'] = dict(memory_info)
+        else:
+            self.payload['memory']['memory_info'] = None
+
+        return self.payload
+
+if __name__ == '__main__':
+    # hostdb client needs superuser permission to run dmidecode utility. check EUID and exit if it's not root user
+    euid = os.geteuid()
+    if euid != 0:
+        print('Please run HostDB client under root user permission.', file=sys.stderr)
+        sys.exit(2)
+
+    # set up command arguments
+    parser = argparse.ArgumentParser(description='HostDB Client')
+    parser.add_argument('--url', type=str, required=True, help='HostDB Backend HTTP endpoint')
+    parser.add_argument('--dump', dest='dump', action='store_true', required=False, help='Dump data payload in JSON format')
+    args = parser.parse_args()
+
+    # debug only
+    m = HostDBClient()
+    m.set_payload()
+    print(json.dumps(m.payload, indent=4))
