@@ -297,11 +297,20 @@ if __name__ == '__main__':
 
     # set up command arguments
     parser = argparse.ArgumentParser(description='HostDB Client')
-    parser.add_argument('--url', type=str, required=True, help='HostDB Backend HTTP endpoint')
+    parser.add_argument('--url', type=str, required=False, help='HostDB Backend HTTP endpoint')
     parser.add_argument('--dump', dest='dump', action='store_true', required=False, help='Dump data payload in JSON format')
     args = parser.parse_args()
 
-    # debug only
-    m = HostDBClient()
-    m.set_payload()
-    print(json.dumps(m.payload, indent=4))
+    if not args.url and not args.dump:
+        parser.print_help()
+        sys.exit(3)
+
+    hostdb_obj = None
+
+    if args.dump:
+        hostdb_obj = HostDBClient()
+        hostdb_obj.set_payload()
+        print(json.dumps(hostdb_obj.payload, indent=4))
+
+    if args.url:
+        pass
