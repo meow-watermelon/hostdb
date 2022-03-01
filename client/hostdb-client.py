@@ -18,6 +18,8 @@ import sys
 def read_sysfs_value(sysfs_filename):
     sysfs_value = None
 
+    print(sysfs_filename)
+
     try:
         with open(sysfs_filename, 'rt') as f:
             sysfs_value = f.readlines()[0].strip()
@@ -91,31 +93,30 @@ class NetworkDevice:
         self.interfaces_list = []
 
     def get_interfaces(self):
-        for dev_dirname in glob.glob('/sys/class/net/*'):
-            dev = os.path.basename(dev_dirname)
+        dev_vendor_list = glob.glob('/sys/class/net/*/device/vendor')
+        dev_device_list = glob.glob('/sys/class/net/*/device/device')
 
-            if not re.match(r'^virbr|^lo', dev):
-                self.interfaces_list.append(dev)
+        dev_vendor_set = set([dev.split('/')[4] for dev in dev_vendor_list])
+        dev_device_set = set([dev.split('/')[4] for dev in dev_device_list])
+
+        self.interfaces_list = list(dev_vendor_set & dev_device_set)
 
         return self.interfaces_list
 
     def get_interface_info(self, dev_name):
         interface_properties = {}
 
-        if os.path.exists('/sys/class/net/%s' %(dev_name)):
-            pci = hwdata.PCI()
+        pci = hwdata.PCI()
 
-            interface_vendor_id = read_sysfs_value('/sys/class/net/%s/device/vendor' %(dev_name))[2:]
-            interface_device_id = read_sysfs_value('/sys/class/net/%s/device/device' %(dev_name))[2:]
+        interface_vendor_id = read_sysfs_value('/sys/class/net/%s/device/vendor' %(dev_name))[2:]
+        interface_device_id = read_sysfs_value('/sys/class/net/%s/device/device' %(dev_name))[2:]
 
-            interface_vendor_name = pci.get_vendor(interface_vendor_id)
-            interface_device_name = pci.get_device(interface_vendor_id, interface_device_id)
+        interface_vendor_name = pci.get_vendor(interface_vendor_id)
+        interface_device_name = pci.get_device(interface_vendor_id, interface_device_id)
 
-            interface_properties['interface_name'] = dev_name
-            interface_properties['interface_vendor_name'] = interface_vendor_name
-            interface_properties['interface_device_name'] = interface_device_name
-        else:
-            pass
+        interface_properties['interface_name'] = dev_name
+        interface_properties['interface_vendor_name'] = interface_vendor_name
+        interface_properties['interface_device_name'] = interface_device_name
 
         return interface_properties
 
