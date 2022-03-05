@@ -177,7 +177,7 @@ class Memory:
         try:
             with open('/proc/meminfo', 'rt') as f:
                 while True:
-                    memory_match = re.match('^MemTotal:\s+(\d+)\s+kB', f.readline().strip())
+                    memory_match = re.match(r'^MemTotal:\s+(\d+)\s+kB', f.readline().strip())
 
                     if memory_match and memory_match.groups():
                         self.total_size = int(memory_match.groups()[0])
@@ -199,7 +199,7 @@ class Memory:
                 dmidecode_memory_output = dmidecode_run.stdout.decode().split('\n')
 
                 for entry in dmidecode_memory_output:
-                    size_match = re.match('^\s+Size:\s+(\d+\s+\w+)', entry)
+                    size_match = re.match(r'^\s+Size:\s+(\d+\s+\w+)', entry)
 
                     if size_match and size_match.groups():
                         memory_size.append(size_match.groups()[0])
