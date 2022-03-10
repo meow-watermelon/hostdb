@@ -18,8 +18,6 @@ import sys
 def read_sysfs_value(sysfs_filename):
     sysfs_value = None
 
-    print(sysfs_filename)
-
     try:
         with open(sysfs_filename, 'rt') as f:
             sysfs_value = f.readlines()[0].strip()
