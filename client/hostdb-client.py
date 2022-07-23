@@ -66,7 +66,7 @@ class HardDrive:
         for dev_dirname in glob.glob('/sys/block/*'):
             dev = os.path.basename(dev_dirname)
 
-            if not re.match(r'^dm|^loop|^zram|^sr', dev):
+            if not re.match(r'^dm|^loop|^zram|^sr|^md', dev):
                 self.devices_list.append(dev)
 
         return self.devices_list
@@ -297,7 +297,7 @@ if __name__ == '__main__':
     # set up command arguments
     parser = argparse.ArgumentParser(description='HostDB Client')
     parser.add_argument('--url', type=str, required=False, help='HostDB Backend HTTP endpoint')
-    parser.add_argument('--dump', dest='dump', action='store_true', required=False, help='Dump data payload in JSON format')
+    parser.add_argument('--dump', action='store_true', required=False, help='Dump data payload in JSON format')
     args = parser.parse_args()
 
     if not args.url and not args.dump:
